@@ -1,0 +1,32 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Fetch code from GitHub') {
+            steps {
+                git branch: 'main', url: 'https://github.com/your-github-repo/sample-app.git'
+            }
+        }
+        
+        stage('Deploy on AWS EC2') {
+            steps {
+                sh '''
+                    # Install required dependencies
+                    sudo apt-get update
+                    sudo apt-get install -y docker.io
+
+                    # Build and run the sample application container
+                    docker build -t sample-app .
+                    docker run -p 80:80 -d sample-app
+
+                    # Add AWS EC2 SSH key
+                    echo "$AWS_SSH_KEY" > ~/.ssh/id_rsa
+                    chmod 600 ~/.ssh/id_rsa
+
+                    # SSH into the EC2 instance and deploy the container
+                    ssh -o StrictHostKeyChecking=no ec2-user@<your-ec2-instance-ip> 'docker pull your-github-repo/sample-app:latest && docker stop sample-app-container && docker run -p 80:80 -d --name sample-app-container your-github-repo/sample-app:latest'
+                '''
+            }
+        }
+    }
+}
